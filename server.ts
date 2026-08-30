@@ -102,6 +102,36 @@ async function startServer() {
     }
   });
 
+  const executeCommand = (cmd: string): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return new Promise((resolve) => {
+      exec(cmd, { timeout: 8000, windowsHide: true }, (error, stdout, stderr) => {
+        if (error) {
+          console.warn(`[PC Action Error] Command "${cmd}" failed:`, error.message);
+          resolve({ success: false, error: error.message, output: stderr });
+        } else {
+          resolve({ success: true, output: stdout || "Executed successfully" });
+        }
+      });
+    });
+  };
+
+  const runFastVBS = (vbsCode: string): Promise<{ success: boolean; output?: string; error?: string }> => {
+    return new Promise((resolve) => {
+      const tempFile = path.join(os.tmpdir(), `sowa_act_${Date.now()}_${Math.random().toString(36).slice(2)}.vbs`);
+      fs.writeFile(tempFile, vbsCode, (err) => {
+        if (err) return resolve({ success: false, error: err.message });
+        exec(`cscript //nologo "${tempFile}"`, { timeout: 4000, windowsHide: true }, (error, stdout, stderr) => {
+          fs.unlink(tempFile, () => {});
+          if (error) {
+            resolve({ success: false, error: error.message, output: stderr });
+          } else {
+            resolve({ success: true, output: stdout || "Executed successfully" });
+          }
+        });
+      });
+    });
+  };
+
   // Focus Window Endpoint (brings Sowa AI to foreground when wake word is spoken)
   app.post("/api/pc/focus", (req, res) => {
     if (process.platform === "win32") {
@@ -117,36 +147,6 @@ async function startServer() {
     const platform = process.platform;
 
     console.log(`[PC Action] Requested action="${action}", appName="${appName}", setting="${setting}", val="${value}" on platform="${platform}"`);
-
-    const executeCommand = (cmd: string): Promise<{ success: boolean; output?: string; error?: string }> => {
-      return new Promise((resolve) => {
-        exec(cmd, { timeout: 8000, windowsHide: true }, (error, stdout, stderr) => {
-          if (error) {
-            console.warn(`[PC Action Error] Command "${cmd}" failed:`, error.message);
-            resolve({ success: false, error: error.message, output: stderr });
-          } else {
-            resolve({ success: true, output: stdout || "Executed successfully" });
-          }
-        });
-      });
-    };
-
-    const runFastVBS = (vbsCode: string): Promise<{ success: boolean; output?: string; error?: string }> => {
-      return new Promise((resolve) => {
-        const tempFile = path.join(os.tmpdir(), `sowa_act_${Date.now()}_${Math.random().toString(36).slice(2)}.vbs`);
-        fs.writeFile(tempFile, vbsCode, (err) => {
-          if (err) return resolve({ success: false, error: err.message });
-          exec(`cscript //nologo "${tempFile}"`, { timeout: 4000, windowsHide: true }, (error, stdout, stderr) => {
-            fs.unlink(tempFile, () => {});
-            if (error) {
-              resolve({ success: false, error: error.message, output: stderr });
-            } else {
-              resolve({ success: true, output: stdout || "Executed successfully" });
-            }
-          });
-        });
-      });
-    };
 
     try {
       if (action === "open_app") {

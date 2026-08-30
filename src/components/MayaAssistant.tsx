@@ -576,7 +576,6 @@ export default function MayaAssistant() {
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
 
-  const isActive = state !== 'disconnected';
   const isSpeaking = state === 'speaking';
   const isPresetWallpaper = ['atmosphere', 'nebula', 'void'].includes(activeWallpaper);
 
