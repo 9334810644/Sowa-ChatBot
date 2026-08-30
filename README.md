@@ -1,6 +1,17 @@
-# Sowa AI — Personal AI Companion & Multimodal Desktop OS
+# Sowa AI — Advanced Multimodal Desktop Assistant
 
-Sowa AI is an advanced personal AI companion and desktop controller powered by Google Gemini (Multimodal Live API & Gemini 3.1 Pro). It features full-duplex live voice interaction, real-time voice activity barge-in, a native Windows PC controller & app launcher, hardware maintenance tools, web search, memory hub, mood customization, widgets, and optional Google Workspace integrations.
+Sowa AI is an intelligent, real-time multimodal AI assistant powered by **Google Gemini**. It combines bidirectional low-latency audio streaming, live camera and screen vision, deep operating system integration, and external tool automations into a sleek desktop experience. It features full-duplex live voice interaction, real-time voice activity barge-in, a native Windows PC controller & app launcher, hardware maintenance tools, web search, memory hub, mood customization, widgets, and optional Google Workspace integrations.
+
+---
+
+### ✨ Core Features
+
+- 🎙️ **Real-Time Voice Chat:** Low-latency bidirectional conversational streaming with voice activity detection.
+- 👁️ **Live Vision & Screen Context:** Real-time webcam analysis and screen-sharing for live debugging, browsing, and collaborative tasks.
+- 💻 **Native PC Automation:** Control system volume, launch apps, execute background actions, and monitor system diagnostics.
+- 🛠️ **Tool & Service Integrations:** Built-in support for Google Workspace (Calendar/Gmail), Telegram, Google Chat, web search, and image generation.
+- 🧠 **Persistent Memory & Snapshots:** Long-term conversation memory, context snapshots, and proactive contextual nudges.
+- 🖥️ **Cross-Platform Desktop App:** Built with React 19, TypeScript, Tailwind CSS, Vite, and Electron.
 
 ---
 
@@ -95,3 +106,4 @@ Switch between 4 core personas anytime from the top-left mood badge, top-right m
 | `npm run build` | Builds production client assets in `dist/` |
 | `npm run electron:build` | Packages standalone Windows EXE in `release/Sowa AI-win32-x64/` |
 | `npm run lint` | Runs TypeScript type checking |
+
