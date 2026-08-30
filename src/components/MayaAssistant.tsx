@@ -1,10 +1,12 @@
-import React, { useRef, useEffect, useState } from "react";
-import { Power, MicOff, Globe, Sparkles, Zap, Heart, Trash2, Volume2, Camera, Monitor, CameraOff, MonitorOff, Maximize2, Minimize2, Settings2, Brain, ChevronDown, ChevronRight, Coffee, Briefcase, Flame, Pause, Play, MessageSquare, Menu, LogIn, LogOut, Info, Wifi, Bluetooth, Timer as TimerIcon, Calendar, CheckSquare, Search, Image as ImageIcon, X } from "lucide-react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { Power, MicOff, Globe, Sparkles, Zap, Heart, Trash2, Volume2, Camera, Monitor, CameraOff, MonitorOff, Maximize2, Minimize2, Settings2, Brain, ChevronDown, ChevronRight, Coffee, Briefcase, Flame, Pause, Play, MessageSquare, Menu, LogIn, LogOut, Info, Wifi, Bluetooth, Timer as TimerIcon, Calendar, CheckSquare, Search, Image as ImageIcon, X, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import VoiceVisualizer from "./VoiceVisualizer";
 import ChatModal from "./ChatModal";
 import SettingsModal from "./SettingsModal";
 import MemoryHub from "./MemoryHub";
+import OnboardingModal from "./OnboardingModal";
+import { useWakeWord } from "../hooks/useWakeWord";
 import { useLiveSession, Mood, CORE_MOODS } from "../hooks/useLiveSession";
 import { generateId } from "../lib/uuid";
 import { cn } from "../lib/utils";
@@ -33,6 +35,7 @@ export default function MayaAssistant() {
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isToolExecuting, setIsToolExecuting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -159,6 +162,70 @@ export default function MayaAssistant() {
       window.removeEventListener('maya-settings-changed', handleSettingsChanged);
     };
   }, []);
+
+  // Check if API key is missing on initial launch (especially fresh desktop installation)
+  useEffect(() => {
+    const checkInitialApiKey = async () => {
+      const localKey = localStorage.getItem('sowa_gemini_api_key') || localStorage.getItem('maya_gemini_api_key');
+      if (!localKey) {
+        try {
+          const res = await fetch('/api/config');
+          const data = await res.json();
+          if (!data.hasGeminiKey) {
+            setIsOnboardingOpen(true);
+          }
+        } catch (e) {
+          setIsOnboardingOpen(true);
+        }
+      }
+    };
+    checkInitialApiKey();
+  }, []);
+
+  // Automatically open onboarding setup if live session returns missing API key error
+  useEffect(() => {
+    if (error && (error.toLowerCase().includes("api key") || error.toLowerCase().includes("key is missing"))) {
+      setIsOnboardingOpen(true);
+    }
+  }, [error]);
+
+  const isActive = state !== 'disconnected' && state !== 'error';
+
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(() => {
+    const saved = localStorage.getItem('sowa_wake_word_enabled') || localStorage.getItem('maya_wake_word_enabled');
+    return saved !== 'false';
+  });
+
+  const handleConnectWithKeyCheck = useCallback(async () => {
+    if (!wifiEnabled || (state !== 'disconnected' && state !== 'error')) return;
+    const localKey = localStorage.getItem('sowa_gemini_api_key') || localStorage.getItem('maya_gemini_api_key');
+    if (!localKey) {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (!data.hasGeminiKey) {
+          setIsOnboardingOpen(true);
+          return;
+        }
+      } catch (e) {
+        setIsOnboardingOpen(true);
+        return;
+      }
+    }
+    connect();
+  }, [wifiEnabled, state, connect]);
+
+  const handleWakeWordTriggered = useCallback((transcript?: string) => {
+    console.log("[WakeWord] Triggered with phrase:", transcript);
+    setLastAction("Waking up to assist you...");
+    handleConnectWithKeyCheck();
+  }, [handleConnectWithKeyCheck, setLastAction]);
+
+  const { isListeningForWake } = useWakeWord({
+    enabled: wakeWordEnabled && !isSettingsOpen && !isOnboardingOpen,
+    onWake: handleWakeWordTriggered,
+    isActive
+  });
 
   // Bio-Rhythm System: Maintains formal tone as default or adjusts smoothly if bio-rhythm is desired
   useEffect(() => {
@@ -1112,7 +1179,7 @@ export default function MayaAssistant() {
             }}
           >
             <motion.button
-              onClick={(!isActive && wifiEnabled) ? connect : undefined}
+              onClick={(!isActive && wifiEnabled) ? handleConnectWithKeyCheck : undefined}
               whileHover={{ scale: 1.06, filter: 'brightness(1.1)' }}
               whileTap={{ scale: 0.94 }}
               aria-label={isActive ? "Sowa AI is listening" : "Tap to connect to Sowa AI"}
@@ -1192,6 +1259,21 @@ export default function MayaAssistant() {
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-32 whitespace-nowrap bg-red-500/20 text-red-500 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border border-red-500/30"
             >
               Offline (Wi-Fi Disabled)
+            </motion.div>
+          )}
+
+          {wifiEnabled && !isActive && isListeningForWake && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, filter: 'blur(5px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-36 whitespace-nowrap flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/60 border border-cyan-500/30 text-cyan-300 text-xs font-medium shadow-[0_0_25px_rgba(6,182,212,0.2)] backdrop-blur-md"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+              <span>Say <strong className="text-white font-bold tracking-wide">"Hey Sowa"</strong> to wake up</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1725,6 +1807,18 @@ export default function MayaAssistant() {
 
       {/* Chat Modal */}
       <ChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+
+      {/* Initial Setup & Onboarding Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onSuccess={() => {
+          setIsOnboardingOpen(false);
+          setTimeout(() => {
+            connect();
+          }, 300);
+        }}
+      />
 
       {/* Dynamic Brightness Filter Overlay - Covers everything but pointer-events-none */}
       <div 

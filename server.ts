@@ -51,6 +51,66 @@ async function startServer() {
     }
   });
 
+  // PC Startup Configuration Endpoint (Auto-launch on Windows Boot)
+  app.get("/api/pc/startup", (req, res) => {
+    if (process.platform !== "win32") {
+      return res.json({ success: true, enabled: false, platform: process.platform });
+    }
+
+    exec('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Sowa AI"', (err, stdout) => {
+      if (err || !stdout || !stdout.includes("Sowa AI")) {
+        exec('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Maya AI"', (err2, stdout2) => {
+          const enabled = !err2 && !!stdout2 && stdout2.includes("Maya AI");
+          return res.json({ success: true, enabled });
+        });
+      } else {
+        return res.json({ success: true, enabled: true });
+      }
+    });
+  });
+
+  app.post("/api/pc/startup", (req, res) => {
+    const { enabled } = req.body;
+    if (process.platform !== "win32") {
+      return res.json({ success: true, enabled: !!enabled, message: "Only Windows startup management supported natively" });
+    }
+
+    if (enabled) {
+      let targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+      if (!targetExe || targetExe.toLowerCase().endsWith("node.exe") || targetExe.toLowerCase().endsWith("tsx.exe")) {
+        const batchLauncher = path.join(process.cwd(), "Launch-Sowa-AI.bat");
+        if (fs.existsSync(batchLauncher)) {
+          targetExe = batchLauncher;
+        }
+      }
+
+      const cmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Sowa AI" /t REG_SZ /d "\"${targetExe}\"" /f`;
+      exec(cmd, (err) => {
+        if (err) {
+          console.warn("[Startup] Registry add failed:", err.message);
+          return res.json({ success: false, error: err.message, enabled: false });
+        }
+        console.log(`[Startup] Enabled Windows startup for: ${targetExe}`);
+        return res.json({ success: true, enabled: true });
+      });
+    } else {
+      const cmd = `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Sowa AI" /f & reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Maya AI" /f`;
+      exec(cmd, () => {
+        console.log("[Startup] Disabled Windows startup");
+        return res.json({ success: true, enabled: false });
+      });
+    }
+  });
+
+  // Focus Window Endpoint (brings Sowa AI to foreground when wake word is spoken)
+  app.post("/api/pc/focus", (req, res) => {
+    if (process.platform === "win32") {
+      const vbsCode = `Set o = CreateObject("WScript.Shell")\r\no.AppActivate "Sowa AI"\r\no.AppActivate "Maya AI"\r\n`;
+      runFastVBS(vbsCode).catch(() => {});
+    }
+    return res.json({ success: true });
+  });
+
   // Native PC Actions (App Launcher, System Settings, Volume, File Explorer, etc.)
   app.post("/api/pc/action", async (req, res) => {
     const { action, appName, setting, value, path: targetPath, command } = req.body;

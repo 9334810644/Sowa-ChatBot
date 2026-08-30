@@ -76,6 +76,8 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general',
   const [grokApiKey, setGrokApiKey] = useState('');
   const [grokKeySaved, setGrokKeySaved] = useState(false);
   const [aiProvider, setAiProvider] = useState<'gemini' | 'grok'>('gemini');
+  const [autoStartup, setAutoStartup] = useState(false);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
 
   // PC Settings States
   const [brightness, setBrightness] = useState(80);
@@ -165,8 +167,39 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general',
     setGeminiApiKey(localStorage.getItem('sowa_gemini_api_key') || localStorage.getItem('maya_gemini_api_key') || '');
     setGrokApiKey(localStorage.getItem('sowa_grok_api_key') || localStorage.getItem('maya_grok_api_key') || '');
     setAiProvider((localStorage.getItem('sowa_ai_provider') || localStorage.getItem('maya_ai_provider') || 'gemini') as any);
+    const savedWakeWord = localStorage.getItem('sowa_wake_word_enabled') || localStorage.getItem('maya_wake_word_enabled');
+    setWakeWordEnabled(savedWakeWord !== 'false');
     fetchPcInfo();
+    fetch('/api/pc/startup')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && typeof data.enabled === 'boolean') {
+          setAutoStartup(data.enabled);
+        }
+      })
+      .catch(() => {});
   }, [isOpen]);
+
+  const handleToggleWakeWord = (enabled: boolean) => {
+    setWakeWordEnabled(enabled);
+    safeSaveToLocalStorage('sowa_wake_word_enabled', String(enabled));
+    safeSaveToLocalStorage('maya_wake_word_enabled', String(enabled));
+    window.dispatchEvent(new CustomEvent('sowa-settings-changed', { detail: { wakeWordEnabled: enabled } }));
+    window.dispatchEvent(new CustomEvent('maya-settings-changed', { detail: { wakeWordEnabled: enabled } }));
+  };
+
+  const handleToggleStartup = async (enabled: boolean) => {
+    setAutoStartup(enabled);
+    try {
+      await fetch('/api/pc/startup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+    } catch (e) {
+      console.warn("Failed to toggle startup:", e);
+    }
+  };
 
   const handleSaveGeminiKey = (val: string) => {
     const trimmed = val.trim();
@@ -447,6 +480,56 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general',
               >
                 <motion.span 
                   animate={{ x: selfLearning ? 24 : 4 }}
+                  className="inline-block h-4 w-4 rounded-full bg-white shadow-sm" 
+                />
+              </button>
+            </motion.div>
+
+            {/* Launch on Windows Startup */}
+            <motion.div variants={itemVariants} className="flex items-center justify-between pt-2 border-t border-white/5">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${autoStartup ? 'bg-purple-500/20 text-purple-400' : 'bg-white/5 text-white/40'}`} aria-hidden="true">
+                  <Laptop className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white/90" id="startup-label">Launch on Windows Startup</div>
+                  <div className="text-xs text-white/40">Automatically start Sowa AI when your PC boots</div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleToggleStartup(!autoStartup)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a24] ${autoStartup ? 'bg-purple-500' : 'bg-white/10'}`}
+                role="switch"
+                aria-checked={autoStartup}
+                aria-labelledby="startup-label"
+              >
+                <motion.span 
+                  animate={{ x: autoStartup ? 24 : 4 }}
+                  className="inline-block h-4 w-4 rounded-full bg-white shadow-sm" 
+                />
+              </button>
+            </motion.div>
+
+            {/* Voice Wake Word ("Hey Sowa") */}
+            <motion.div variants={itemVariants} className="flex items-center justify-between pt-2 border-t border-white/5">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${wakeWordEnabled ? 'bg-pink-500/20 text-pink-400' : 'bg-white/5 text-white/40'}`} aria-hidden="true">
+                  <Mic className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white/90" id="wake-word-label">Voice Wake Word ("Hey Sowa")</div>
+                  <div className="text-xs text-white/40">Continuously listen for "Hey Sowa" to wake up and talk</div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleToggleWakeWord(!wakeWordEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a24] ${wakeWordEnabled ? 'bg-pink-500' : 'bg-white/10'}`}
+                role="switch"
+                aria-checked={wakeWordEnabled}
+                aria-labelledby="wake-word-label"
+              >
+                <motion.span 
+                  animate={{ x: wakeWordEnabled ? 24 : 4 }}
                   className="inline-block h-4 w-4 rounded-full bg-white shadow-sm" 
                 />
               </button>
