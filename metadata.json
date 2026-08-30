@@ -1,0 +1,9 @@
+{
+  "name": "Sowa AI Advanced",
+  "description": "Sowa AI with enhanced communication (Gmail, Social Media) and vision (Chart Parsing) capabilities.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}

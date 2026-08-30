@@ -1,0 +1,22 @@
+{
+  "short_name": "Sowa AI",
+  "name": "Sowa AI Assistant",
+  "icons": [
+    {
+      "src": "/sowa-icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/sowa-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#050507",
+  "background_color": "#050507"
+}

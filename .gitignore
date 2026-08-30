@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Production & Build outputs
+dist/
+dist-electron/
+release/
+build/
+win-unpacked/
+
+# Executables & installers
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+*.blockmap
+*.tmp
+
+# Logs & Testing
+*.log
+coverage/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Environment variables (keep .env private, only share .env.example)
+.env*
+!.env.example
